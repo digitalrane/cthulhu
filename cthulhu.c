@@ -81,6 +81,7 @@ struct cgroup *configure_cgroup()
     {
 
       cgroup_set_value_uint64( memory_cg, "memory.limit_in_bytes", MEMORY_LIMIT );
+      cgroup_set_value_bool( memory_cg, "memory.move_charge_at_immigrate", true );
       cgroup_attach_task( cgroup );
       return( cgroup );
 
