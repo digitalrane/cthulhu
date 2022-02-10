@@ -1,0 +1,17 @@
+[package]
+name = "cthulhu"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nix = "0.23.1"
+rand = "0.8.4"
+cgroups-rs = "0.2.8"
+rtnetlink = "0.9"
+chrono = "0.4.19"
+log = "0.4"
+caps = "0.5.3"
+ipnetwork = "0.18.0"
+fern = { version = "0.6.0", features = ["colored"] }
+tokio = { version = "1.16.1", features = ["full"] }
+futures = "0.3.21"

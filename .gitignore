@@ -1,3 +1,11 @@
 chroot
 cthulhu
 *.swp
+
+# emacs
+*~
+\#*
+
+# Added by cargo
+
+/target
