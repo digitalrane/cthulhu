@@ -12,18 +12,14 @@
 use cgroups_rs::*;
 use cgroups_rs::cgroup_builder::*;
 
-use nix::sys::signal::Signal;
-use nix::sys::wait::WaitPidFlag;
 // these are standard linux syscalls we use in this program
 // they will be detailed as we use them in more specific comments
 // generally, however, they are used to set and validate specific
 // things like hostnames and user IDs inside the container
 use nix::unistd::{geteuid, getegid, setgid, setuid, gethostname, sethostname, getpid, chroot, chdir, Pid, Uid, Gid};
-use nix::libc::{execv, SIGCHLD};
 use nix::mount::{mount, umount, MsFlags};
 use nix::sched::CloneFlags;
-// used for creating proper c strings we can pass to direct syscalls
-use std::ffi::CString;
+use nix::sys::wait::WaitPidFlag;
 
 // use the rust std::process wrapper for calling our container entrypoint
 use std::process::{Command, Stdio};
@@ -87,7 +83,7 @@ async fn configure_logging() {
                 message
             ))
 	})
-	.level(log::LevelFilter::Debug)
+	.level(log::LevelFilter::Info)
 	.chain(std::io::stdout())
 	.apply().unwrap();
 }
@@ -347,7 +343,10 @@ fn start_container() -> isize
 	    Ok(child) => child,
 	    Err(e) => panic!("Failed to run container shell: {:?}", e)
 	};
-    child.wait();
+    match child.wait() {
+	Ok(_) => debug!("shell process wait complete"),
+	Err(e) => panic!("error returned from subprocess wait: {:?}", e)
+    }
     0
 }
 

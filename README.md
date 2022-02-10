@@ -48,4 +48,6 @@ To run, after preparing the chroot, run `cargo run`.
 All sources are in `src/main.rs`.
 Refer to `cthulhu.c` for the original C version.
 
+![screenshot showing cthulhu output](cthulhu.png)
+
 Happy namespace (ab)use!
