@@ -33,10 +33,6 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::thread::sleep;
 use std::time::Duration;
 
-// headers for using namespaces and execution related functions
-// #include <sys/wait.h>
-// #include <sched.h>
-
 // just filesystem things, for writing our files into /proc to set UID and GID maps
 use std::fs;
 
