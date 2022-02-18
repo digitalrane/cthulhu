@@ -41,7 +41,7 @@ use std::time::Duration;
 use std::fs;
 
 // capabilities stuff, for setting and getting 'em
-use caps::CapSet;
+use caps::{CapSet, Capability, CapsHashSet};
 
 // netlink (rtnetlink) crate, for manipulating virtual ethernet devices
 // and the addresses and routes assigned to them, for container networking
@@ -275,29 +275,6 @@ fn start_container() -> isize
     
     info!("Container: My hostname is {}", container_hostname);
 
-    // set user
-    info!("Container: Switching to root user in the container");
-    match setuid(Uid::from_raw(0)) {
-	Ok(_) => debug!("Container: switched to UID 0"),
-	Err(e) => panic!("Container: failed to switch to UID 0: {:?}", e)
-    }
-    match setgid(Gid::from_raw(0)) {
-	Ok(_) => debug!("Container: switched to GID 0"),
-	Err(e) => panic!("Container: failed to switch to GID 0: {:?}", e)
-    }
-  
-    // who are we?
-    let container_uid = geteuid();
-    let container_gid = getegid();
-    info!("Container: Effective UID = {}, effective GID = {}", container_uid, container_gid);
-
-    // and what do we do?
-    let capabilities = match caps::read(None, CapSet::Effective) {
-	Ok(caps) => caps,
-	Err(e) => panic!("Container: failed to get effective capabilities: {:?}", e)
-    };
-    info!("Container: user capabilities: {:?}", capabilities);
-
     // unmount /proc so we can remount it in the new namespace
     // until then we share proc with the host
     // this mount operation only operates within the mount namespace assosciated
@@ -331,7 +308,68 @@ fn start_container() -> isize
 	Ok(_) => debug!("Container: mounted container /proc filesystem"),
 	Err(e) => panic!("Continer: Remounting /proc in container failed: {:?}", e )
     }
+    
+    // set user
+    info!("Container: Switching to root user in the container");
+    match setuid(Uid::from_raw(0)) {
+	Ok(_) => debug!("Container: switched to UID 0"),
+	Err(e) => panic!("Container: failed to switch to UID 0: {:?}", e)
+    }
+    match setgid(Gid::from_raw(0)) {
+	Ok(_) => debug!("Container: switched to GID 0"),
+	Err(e) => panic!("Container: failed to switch to GID 0: {:?}", e)
+    }
+  
+    // who are we?
+    let container_uid = geteuid();
+    let container_gid = getegid();
+    info!("Container: Effective UID = {}, effective GID = {}", container_uid, container_gid);
 
+    // and what do we do?
+    let capabilities = match caps::read(None, CapSet::Effective) {
+	Ok(caps) => caps,
+	Err(e) => panic!("Container: failed to get effective capabilities: {:?}", e)
+    };
+    info!("Container: initial user capabilities: {:?}", capabilities);
+    
+    // Clear all effective caps.
+    match caps::clear(None, CapSet::Effective) {
+	Ok(_) => info!("Container: cleared all capabilities."),
+	Err(e) => panic!("Container: failed to clear capabilities: {:?}", e)
+    };
+    let capabilities = match caps::read(None, CapSet::Effective) {
+	Ok(caps) => caps,
+	Err(e) => panic!("Container: failed to get effective capabilities: {:?}", e)
+    };
+    info!("Container: user capabilities after clear: {:?}", capabilities);
+
+    // Let's limit the capabilities a bit
+    // you should listen to Wade and not give your containers CAP_*_ADMIN
+    // CAP_NET_RAW is also considered problematic for certain container environments,
+    // given the ability to potentially interact with traffic outside of the network namespace
+    //
+    // So, let's set a sensible list of minimal capabilities for our unprivileged containers
+    let mut new_caps = CapsHashSet::new();
+    new_caps.insert(Capability::CAP_CHOWN);
+    new_caps.insert(Capability::CAP_FOWNER);
+    new_caps.insert(Capability::CAP_FSETID);
+    new_caps.insert(Capability::CAP_KILL);
+    new_caps.insert(Capability::CAP_SETFCAP);
+    new_caps.insert(Capability::CAP_SETGID);
+    new_caps.insert(Capability::CAP_SETPCAP);
+    new_caps.insert(Capability::CAP_SETUID);
+
+    match caps::set(None, CapSet::Effective, &new_caps) {
+	Ok(_) =>  info!("Container: set new capabilities"),
+	Err(e) => panic!("Container: failed to set new capabilities: {:?}", e)
+    };
+       
+    let capabilities = match caps::read(None, CapSet::Effective) {
+	Ok(caps) => caps,
+	Err(e) => panic!("Container: failed to get effective capabilities: {:?}", e)
+    };
+    info!("Container: user capabilities after update: {:?}", capabilities);
+    
     // let's start a shell!
     info!("Container: Started container. Now starting shell.");
     let mut child = match Command::new("/bin/bash")

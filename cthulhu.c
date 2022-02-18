@@ -322,7 +322,7 @@ static int start_container(void *arg)
   printf("done.\n");
   
   // who are we?
-  printf("Container: Effective UID = %ld, effective GID = %ld", (long) geteuid(), (long) getegid());
+  printf("Container: Effective UID = %ld, effective GID = %ld\n", (long) geteuid(), (long) getegid());
   capabilities = cap_get_proc();
   printf("Container user capabilities: %s\n", cap_to_text(capabilities, NULL));
 
